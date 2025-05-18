@@ -28,8 +28,9 @@ public class CurrencyService {
     public BigDecimal convert(BigDecimal amount, String fromCurrencyCode, String toCurrencyCode) {
         Currency fromCurrency = currencyRepository.findByCode(fromCurrencyCode).orElseThrow();
         Currency toCurrency = currencyRepository.findByCode(toCurrencyCode).orElseThrow();
-        double rate = toCurrency.getExchangeRate() / fromCurrency.getExchangeRate();
-        return amount.multiply(BigDecimal.valueOf(rate)).setScale(2, BigDecimal.ROUND_HALF_UP);
+        BigDecimal rate = toCurrency.getExchangeRate().divide(
+            fromCurrency.getExchangeRate(), 10, BigDecimal.ROUND_HALF_UP);
+        return amount.multiply(rate).setScale(2, BigDecimal.ROUND_HALF_UP);
     }
 
     public List<Currency> getAllCurrencies() {
@@ -37,14 +38,14 @@ public class CurrencyService {
     }
 
     public void updateExchangeRates() {
-        String url = exchangeApiUrl + "?access_key=" + apiKey;
+        String url = exchangeApiUrl + "?access_key=" + apiKey + "&base=PLN&symbols=USD,EUR,GBP,JPY";
         Map<String, Object> response = restTemplate.getForObject(url, Map.class);
         Map<String, Double> rates = (Map<String, Double>) response.get("rates");
 
         if (rates != null) {
             for (Map.Entry<String, Double> entry : rates.entrySet()) {
                 currencyRepository.findByCode(entry.getKey()).ifPresent(currency -> {
-                    currency.setExchangeRate(entry.getValue());
+                    currency.setExchangeRate(BigDecimal.valueOf(entry.getValue()));
                     currencyRepository.save(currency);
                 });
             }
