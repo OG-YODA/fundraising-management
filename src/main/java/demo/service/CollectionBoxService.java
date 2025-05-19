@@ -24,7 +24,10 @@ public class CollectionBoxService {
     @Autowired
     private CurrencyService currencyService;
 
+    System.Logger logger = System.getLogger(CollectionBoxService.class.getName());
+
     public CollectionBox createBox() {
+        logger.log(System.Logger.Level.INFO, "Creating a new collection box");//resolve provide id
         return boxRepository.save(new CollectionBox());
     }
 
@@ -33,6 +36,7 @@ public class CollectionBoxService {
         if (box.getAssignedEvent() != null) throw new IllegalStateException("Box is already assigned to an event.");
         FundraisingEvent event = eventRepository.findById(eventId).orElseThrow();
         if (!box.isEmpty()) throw new IllegalStateException("Cannot assign a non-empty box to an event.");
+        logger.log(System.Logger.Level.INFO, "Assigning box with ID " + boxId + " to event with ID " + eventId);
         box.setAssignedEvent(event);
         boxRepository.save(box);
     }
@@ -42,7 +46,7 @@ public class CollectionBoxService {
         box.setAssignedEvent(null);
         boxRepository.save(box);
 
-        System.out.println("Box with ID " + boxId + " has been unassigned from the event. Reason: " + reason);
+        logger.log(System.Logger.Level.INFO, "Unassigning box with ID " + boxId + " from event. Reason: " + reason);
     }
 
     public void addFundsToBox(Long boxId, BigDecimal amount, CurrencyCode currencyCode) {
@@ -52,7 +56,7 @@ public class CollectionBoxService {
         box.setBalances(balances);
         box.setEmpty(false);
         boxRepository.save(box);
-        System.out.println("Added " + amount + " " + currencyCode + " to box with ID " + boxId);
+        logger.log(System.Logger.Level.INFO, "Adding funds to box with ID " + boxId + ": " + amount + " " + currencyCode);
     }
 
     public void transferFundsToEventBalance(Long boxId) {
@@ -61,6 +65,15 @@ public class CollectionBoxService {
 
         FundraisingEvent event = box.getAssignedEvent();
         if (event == null) {
+            logger.log(System.Logger.Level.INFO, "Box with ID " + boxId + " is not assigned to any event.");
+            logger.log(System.Logger.Level.INFO, "Returning funds from the box and clearing balances.");
+
+            //Returning mechanism
+            
+            box.setEmpty(true);
+            box.setBalances(Map.of());
+            boxRepository.save(box);
+
             throw new IllegalStateException("Box is not assigned to any event.");
         }
 
@@ -70,6 +83,8 @@ public class CollectionBoxService {
         if (balances.isEmpty()) {
             throw new IllegalStateException("Box is empty, cannot transfer funds.");
         }
+
+        logger.log(System.Logger.Level.INFO, "Transferring funds from box with ID " + boxId + " to event with ID " + event.getId());
 
         for (Map.Entry<CurrencyCode, BigDecimal> entry : balances.entrySet()) {
             CurrencyCode boxCurrencyCode = entry.getKey();
@@ -83,7 +98,8 @@ public class CollectionBoxService {
                 event.setTotalAmount(event.getTotalAmount().add(amount));
             } else {
                 try {
-                    BigDecimal convertedAmount = currencyService.convert(amount, boxCurrencyCode.toString(), eventCurrencyCode.toString());
+                    BigDecimal convertedAmount = currencyService.convert(amount, boxCurrencyCode, eventCurrencyCode);
+                    logger.log(System.Logger.Level.INFO, "Converted " + amount + " " + boxCurrencyCode + " to " + convertedAmount + " " + eventCurrencyCode);
                     event.setTotalAmount(event.getTotalAmount().add(convertedAmount));
                 } catch (Exception e) {
                     throw new IllegalArgumentException("Error converting currency from " + boxCurrencyCode + " to " + eventCurrencyCode + ": " + e.getMessage());
@@ -98,6 +114,7 @@ public class CollectionBoxService {
     }
 
     public List<CollectionBoxDto> getBoxesInfo() {
+        logger.log(System.Logger.Level.INFO, "Retrieving information about all collection boxes");
         return boxRepository.findAll().stream()
             .map(box -> new CollectionBoxDto(
                 box.getId(),

@@ -1,8 +1,8 @@
 package demo.service;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,12 +10,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import demo.entity.Currency;
+import demo.enums.CurrencyCode;
 import demo.repository.CurrencyRepository;
 
 @Service
 public class CurrencyService {
     @Autowired
     private CurrencyRepository currencyRepository;
+
+    System.Logger logger = System.getLogger(CurrencyService.class.getName());
 
     @Value("${exchange.api.url}")
     private String exchangeApiUrl;
@@ -25,27 +28,37 @@ public class CurrencyService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public BigDecimal convert(BigDecimal amount, String fromCurrencyCode, String toCurrencyCode) {
+    public BigDecimal convert(BigDecimal amount, CurrencyCode fromCurrencyCode, CurrencyCode toCurrencyCode) {
+
         Currency fromCurrency = currencyRepository.findByCode(fromCurrencyCode).orElseThrow();
         Currency toCurrency = currencyRepository.findByCode(toCurrencyCode).orElseThrow();
+        updateExchangeRates(toCurrencyCode);
         BigDecimal rate = toCurrency.getExchangeRate().divide(
             fromCurrency.getExchangeRate(), 10, BigDecimal.ROUND_HALF_UP);
         return amount.multiply(rate).setScale(2, BigDecimal.ROUND_HALF_UP);
     }
 
-    public List<Currency> getAllCurrencies() {
-        return currencyRepository.findAll();
-    }
+    private String findCodesExceptProvided(CurrencyCode currencyCode){
+        return currencyRepository.findAll().stream()
+            .filter(currency -> !currency.getCode().equals(currencyCode))
+            .map(currency -> currency.getCode().toString())
+            .collect(Collectors.joining(","));
 
-    public void updateExchangeRates() {
-        String url = exchangeApiUrl + "?access_key=" + apiKey + "&base=PLN&symbols=USD,EUR,GBP,JPY";
+            //returns smthg like: "USD,EUR,GBP"
+    } 
+
+    public void updateExchangeRates(CurrencyCode currencyCode) {
+        String url = exchangeApiUrl + "?access_key=" + apiKey + "&base=" + String.valueOf(currencyCode) + "&symbols=" + findCodesExceptProvided(currencyCode);//resolved
         Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-        Map<String, Double> rates = (Map<String, Double>) response.get("rates");
+        Map<CurrencyCode, BigDecimal> rates = (Map<CurrencyCode, BigDecimal>) response.get("rates");
+
+        logger.log(System.Logger.Level.INFO, "Updating exchange rates for currency: " + currencyCode);
+        logger.log(System.Logger.Level.INFO, "Exchange rates: " + response);
 
         if (rates != null) {
-            for (Map.Entry<String, Double> entry : rates.entrySet()) {
+            for (Map.Entry<CurrencyCode, BigDecimal> entry : rates.entrySet()) {
                 currencyRepository.findByCode(entry.getKey()).ifPresent(currency -> {
-                    currency.setExchangeRate(BigDecimal.valueOf(entry.getValue()));
+                    currency.setExchangeRate(entry.getValue());
                     currencyRepository.save(currency);
                 });
             }

@@ -5,5 +5,5 @@ public enum CurrencyCode {
     EUR,
     GBP,
     PLN,
-    JPY;
+    JPY
 }

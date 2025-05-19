@@ -34,12 +34,8 @@ public class FundraisingManagementApplication {
 			);
 
             for (Currency currency : initialCurrencies) {
-                currencyRepository.findByCode(String.valueOf(currency.getCode())).orElseGet(() -> currencyRepository.save(currency));
+                currencyRepository.findByCode(currency.getCode()).orElseGet(() -> currencyRepository.save(currency));
             }
-
-            // rates update after init
-            currencyService.updateExchangeRates();
-            System.out.println("Initial currencies loaded and exchange rates updated successfully.");
         };
     }
 
