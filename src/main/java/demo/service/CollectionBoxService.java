@@ -1,6 +1,7 @@
 package demo.service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,6 +37,15 @@ public class CollectionBoxService {
         if (box.getAssignedEvent() != null) throw new IllegalStateException("Box is already assigned to an event.");
         FundraisingEvent event = eventRepository.findById(eventId).orElseThrow();
         if (!box.isEmpty()) throw new IllegalStateException("Cannot assign a non-empty box to an event.");
+        if (event == null){
+            throw new IllegalArgumentException("Event not found with ID: " + eventId);
+        }
+        if (event!= null && event.getId() != null) {
+            boolean isEventAssigned = boxRepository.findByAssignedEventId(event.getId()).isPresent();
+            if (isEventAssigned) {    
+                throw new IllegalStateException("Box with ID " + boxId + " is already assigned to event with ID " + eventId);
+            }
+        }
         logger.log(System.Logger.Level.INFO, "Assigning box with ID " + boxId + " to event with ID " + eventId);
         box.setAssignedEvent(event);
         boxRepository.save(box);
@@ -71,7 +81,7 @@ public class CollectionBoxService {
             //Returning mechanism
             
             box.setEmpty(true);
-            box.setBalances(Map.of());
+            box.setBalances(new HashMap<>());
             boxRepository.save(box);
 
             throw new IllegalStateException("Box is not assigned to any event.");
@@ -101,15 +111,20 @@ public class CollectionBoxService {
                     BigDecimal convertedAmount = currencyService.convert(amount, boxCurrencyCode, eventCurrencyCode);
                     logger.log(System.Logger.Level.INFO, "Converted " + amount + " " + boxCurrencyCode + " to " + convertedAmount + " " + eventCurrencyCode);
                     event.setTotalAmount(event.getTotalAmount().add(convertedAmount));
+                    logger.log(System.Logger.Level.INFO, "Adding " + convertedAmount + " " + eventCurrencyCode + " to event with ID " + event.getId());
+                    logger.log(System.Logger.Level.INFO, "Total amount in event after conversion: " + event.getTotalAmount());
                 } catch (Exception e) {
                     throw new IllegalArgumentException("Error converting currency from " + boxCurrencyCode + " to " + eventCurrencyCode + ": " + e.getMessage());
                 }
             }
 
-            balances.remove(boxCurrencyCode);
+            Map<CurrencyCode, BigDecimal> newBalances = new HashMap<>(box.getBalances());
+            newBalances.remove(boxCurrencyCode);
+            box.setBalances(newBalances);
         }
 
         eventRepository.save(event);
+        box.setEmpty(true);
         boxRepository.save(box);
     }
 
@@ -123,4 +138,12 @@ public class CollectionBoxService {
             ))
             .collect(Collectors.toList());
     }
+
+    // public void clearBox(Long boxId) {
+    //     CollectionBox box = boxRepository.findById(boxId).orElseThrow();
+    //     box.setBalances(new HashMap<>());
+    //     box.setEmpty(true);
+    //     boxRepository.save(box);
+    //     logger.log(System.Logger.Level.INFO, "Clearing balances for box with ID " + boxId);
+    // }
 }

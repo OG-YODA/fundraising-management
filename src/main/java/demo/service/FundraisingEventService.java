@@ -58,7 +58,7 @@ public class FundraisingEventService {
         eventRepository.save(event);
     }
 
-    public void printFinancialReport() {
+    public void printFinancialReport() {//TODO: fix formating
         List<FundraisingEvent> events = eventRepository.findAll();
 
         logger.log(System.Logger.Level.INFO, "Generating financial report for all events");

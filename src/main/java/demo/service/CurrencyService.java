@@ -1,12 +1,14 @@
 package demo.service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import demo.entity.Currency;
@@ -32,9 +34,11 @@ public class CurrencyService {
 
         Currency fromCurrency = currencyRepository.findByCode(fromCurrencyCode).orElseThrow();
         Currency toCurrency = currencyRepository.findByCode(toCurrencyCode).orElseThrow();
-        updateExchangeRates(toCurrencyCode);
         BigDecimal rate = toCurrency.getExchangeRate().divide(
             fromCurrency.getExchangeRate(), 10, BigDecimal.ROUND_HALF_UP);
+
+        logger.log(System.Logger.Level.INFO, "Converting " + amount + " from " + fromCurrencyCode + " to " + toCurrencyCode);
+        logger.log(System.Logger.Level.INFO, "Exchange rate: " + rate);
         return amount.multiply(rate).setScale(2, BigDecimal.ROUND_HALF_UP);
     }
 
@@ -47,21 +51,39 @@ public class CurrencyService {
             //returns smthg like: "USD,EUR,GBP"
     } 
 
+    @Transactional
     public void updateExchangeRates(CurrencyCode currencyCode) {
-        String url = exchangeApiUrl + "?access_key=" + apiKey + "&base=" + String.valueOf(currencyCode) + "&symbols=" + findCodesExceptProvided(currencyCode);//resolved
+        String url = exchangeApiUrl + "?access_key=" + apiKey + "&base=" + currencyCode + "&symbols=" + findCodesExceptProvided(currencyCode);
         Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-        Map<CurrencyCode, BigDecimal> rates = (Map<CurrencyCode, BigDecimal>) response.get("rates");
-
-        logger.log(System.Logger.Level.INFO, "Updating exchange rates for currency: " + currencyCode);
-        logger.log(System.Logger.Level.INFO, "Exchange rates: " + response);
-
-        if (rates != null) {
-            for (Map.Entry<CurrencyCode, BigDecimal> entry : rates.entrySet()) {
-                currencyRepository.findByCode(entry.getKey()).ifPresent(currency -> {
-                    currency.setExchangeRate(entry.getValue());
-                    currencyRepository.save(currency);
-                });
-            }
+        
+        if (response == null || !response.containsKey("rates")) {
+            throw new IllegalStateException("Invalid API response: " + response);
         }
+
+        // Конвертація курсів валют у BigDecimal
+        Map<String, Object> rawRates = (Map<String, Object>) response.get("rates");
+        Map<CurrencyCode, BigDecimal> rates = new HashMap<>();
+        rawRates.forEach((key, value) -> {
+            BigDecimal rate = value instanceof Double ? 
+                BigDecimal.valueOf((Double) value) : 
+                BigDecimal.valueOf(((Integer) value).doubleValue());
+            rates.put(CurrencyCode.valueOf(key), rate);
+        });
+
+        logger.log(System.Logger.Level.INFO, "Updating exchange rates for currency: ");
+        logger.log(System.Logger.Level.INFO, "Exchange rates: " + rates);
+
+        // Оновлення курсів у базі даних
+        rates.put(currencyCode, BigDecimal.ONE);
+        rates.forEach((code, rate) -> {
+            currencyRepository.findByCode(code).ifPresentOrElse(
+                currency -> {
+                    currency.setExchangeRate(rate);
+                    currencyRepository.save(currency);
+                    logger.log(System.Logger.Level.INFO, "Updated rate for " + code + ": " + rate);
+                },
+                () -> logger.log(System.Logger.Level.WARNING, "Currency not found: " + code)
+            );
+        });
     }
 }
