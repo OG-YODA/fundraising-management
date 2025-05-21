@@ -28,7 +28,7 @@ public class CollectionBoxService {
     System.Logger logger = System.getLogger(CollectionBoxService.class.getName());
 
     public CollectionBox createBox() {
-        logger.log(System.Logger.Level.INFO, "Creating a new collection box");//resolve provide id
+        logger.log(System.Logger.Level.INFO, "Creating a new collection box");
         return boxRepository.save(new CollectionBox());
     }
 
@@ -89,7 +89,7 @@ public class CollectionBoxService {
 
         CurrencyCode eventCurrencyCode = event.getCurrency().getCode();
         Map<CurrencyCode, BigDecimal> balances = box.getBalances();
-        
+
         if (eventCurrencyCode != null){
             currencyService.updateExchangeRates(eventCurrencyCode);
         }else{
@@ -144,12 +144,4 @@ public class CollectionBoxService {
             ))
             .collect(Collectors.toList());
     }
-
-    // public void clearBox(Long boxId) {
-    //     CollectionBox box = boxRepository.findById(boxId).orElseThrow();
-    //     box.setBalances(new HashMap<>());
-    //     box.setEmpty(true);
-    //     boxRepository.save(box);
-    //     logger.log(System.Logger.Level.INFO, "Clearing balances for box with ID " + boxId);
-    // }
 }

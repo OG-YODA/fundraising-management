@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -102,32 +101,4 @@ public class FundraisingEventServiceTest {
         assertThrows(IllegalArgumentException.class, () -> fundraisingEventService.findById(100L));
     }
 
-    @Test
-    void testCloseEvent_shouldSaveWithoutChanges() {
-        FundraisingEvent event = new FundraisingEvent();
-        event.setId(1L);
-        event.setTotalAmount(BigDecimal.TEN);
-
-        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
-
-        fundraisingEventService.closeEvent(1L);
-
-        verify(eventRepository).save(event);
-        assertEquals(BigDecimal.TEN, event.getTotalAmount()); // переконуємось, що не змінився
-    }
-
-    @Test
-    void testPrintFinancialReport_shouldPrintCorrectly() {
-        FundraisingEvent event1 = new FundraisingEvent();
-        event1.setName("Event A");
-        event1.setTotalAmount(BigDecimal.valueOf(100));
-        Currency currency = new Currency();
-        currency.setCode(CurrencyCode.EUR);
-        event1.setCurrency(currency);
-
-        when(eventRepository.findAll()).thenReturn(List.of(event1));
-
-        // Тестуємо, що метод не кидає винятків. Для перевірки формату треба перехоплювати System.out.
-        assertDoesNotThrow(() -> fundraisingEventService.printFinancialReport());
-    }
 }

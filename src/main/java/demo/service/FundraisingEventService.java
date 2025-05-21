@@ -1,11 +1,14 @@
 package demo.service;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import demo.dto.FinancialReportDto;
 import demo.entity.Currency;
 import demo.entity.FundraisingEvent;
 import demo.enums.CurrencyCode;
@@ -51,43 +54,23 @@ public class FundraisingEventService {
         return eventRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Event not found with ID: " + id));
     }
 
-    public void closeEvent(Long id) {
-        FundraisingEvent event = findById(id);
-        event.setTotalAmount(event.getTotalAmount());
-        logger.log(System.Logger.Level.INFO, "Closing event with ID: " + id);
-        eventRepository.save(event);
-    }
-
-    public void printFinancialReport() {//TODO: fix formating
+    public List<FinancialReportDto> getFinancialReport() {
         List<FundraisingEvent> events = eventRepository.findAll();
-
+        
         logger.log(System.Logger.Level.INFO, "Generating financial report for all events");
         
         if (events.isEmpty()) {
-            System.out.println("No events found.");
-            return;
+            return Collections.emptyList();
         }
         
-        // correct table formatting
-        int maxNameLength = events.stream()
-            .mapToInt(event -> event.getName().length())
-            .max()
-            .orElse(20); // default
+        // сonvert events to DTOs
+        List<FinancialReportDto> report = events.stream()
+            .map(event -> new FinancialReportDto(
+                event.getName(),
+                event.getTotalAmount(),
+                event.getCurrency().getCode().toString()))
+            .collect(Collectors.toList());
         
-        System.out.println("Financial report:");
-        System.out.println("+" + "-".repeat(maxNameLength + 2) + "+" + "-".repeat(12) + "+" + "-".repeat(10) + "+");
-        System.out.printf("| %-" + maxNameLength + "s | %-10s | %-8s |\n", 
-            "Fundraising event name", "Amount", "Currency");
-        System.out.println("+" + "-".repeat(maxNameLength + 2) + "+" + "-".repeat(12) + "+" + "-".repeat(10) + "+");
-        
-        // event data
-        for (FundraisingEvent event : events) {
-            System.out.printf("| %-" + maxNameLength + "s | %10.2f | %-8s |\n", 
-                event.getName(), 
-                event.getTotalAmount(), 
-                event.getCurrency().getCode());
-        }
-        
-        System.out.println("+" + "-".repeat(maxNameLength + 2) + "+" + "-".repeat(12) + "+" + "-".repeat(10) + "+");
+        return report;
     }
 }

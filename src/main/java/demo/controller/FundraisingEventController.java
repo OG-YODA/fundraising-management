@@ -3,12 +3,14 @@ package demo.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import demo.dto.FinancialReportDto;
 import demo.entity.FundraisingEvent;
 import demo.enums.CurrencyCode;
 import demo.service.FundraisingEventService;
@@ -33,16 +35,14 @@ public class FundraisingEventController {
         return eventService.findAll();
     }
 
-    @PostMapping("/financial-report")
-    public void printFinancialReport() {
-        logger.log(System.Logger.Level.INFO, "Endpoint /api/events/financial-report triggered");
-        eventService.printFinancialReport();
-    }
+    @GetMapping("/financial-report")
+    public ResponseEntity<List<FinancialReportDto>> getFinancialReport() {
+        List<FinancialReportDto> report = eventService.getFinancialReport();
 
-    @PutMapping("/close/{id}")
-    public void closeEvent(Long id) {
-        logger.log(System.Logger.Level.INFO, "Endpoint /api/events/close triggered");
-        eventService.closeEvent(id);
-    }
+        if (report.isEmpty()) {
+            return ResponseEntity.noContent().build(); // 204 No Content
+        }
 
+        return ResponseEntity.ok(report); // 200 OK, JSON DTO
+    }
 }

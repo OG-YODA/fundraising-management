@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import demo.dto.CollectionBoxDto;
@@ -44,8 +45,8 @@ public class CollectionBoxController {
         boxService.assignBoxToEvent(boxId, eventId);
     }
 
-    @PutMapping("/{boxId}/unassign/{reason}")
-    public void unassignBox(@PathVariable Long boxId, @PathVariable String reason) {
+    @PutMapping("/{boxId}/unassign")
+    public void unassignBox(@PathVariable Long boxId, @RequestParam String reason) {
         logger.log(System.Logger.Level.INFO, "Endpoint /api/boxes/{boxId}/unassign/{reason} triggered");
         boxService.unassignBoxFromEvent(boxId, reason);
     }

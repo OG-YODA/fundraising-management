@@ -59,8 +59,9 @@ public class CurrencyService {
         if (response == null || !response.containsKey("rates")) {
             throw new IllegalStateException("Invalid API response: " + response);
         }
-
-        // Конвертація курсів валют у BigDecimal
+        if (response.get("success") == null || !(Boolean) response.get("success")) {
+            throw new IllegalStateException("API request failed: " + response);
+        }
         Map<String, Object> rawRates = (Map<String, Object>) response.get("rates");
         Map<CurrencyCode, BigDecimal> rates = new HashMap<>();
         rawRates.forEach((key, value) -> {
@@ -73,7 +74,7 @@ public class CurrencyService {
         logger.log(System.Logger.Level.INFO, "Updating exchange rates for currency: ");
         logger.log(System.Logger.Level.INFO, "Exchange rates: " + rates);
 
-        // Оновлення курсів у базі даних
+        //db rates update
         rates.put(currencyCode, BigDecimal.ONE);
         rates.forEach((code, rate) -> {
             currencyRepository.findByCode(code).ifPresentOrElse(
