@@ -89,6 +89,12 @@ public class CollectionBoxService {
 
         CurrencyCode eventCurrencyCode = event.getCurrency().getCode();
         Map<CurrencyCode, BigDecimal> balances = box.getBalances();
+        
+        if (eventCurrencyCode != null){
+            currencyService.updateExchangeRates(eventCurrencyCode);
+        }else{
+            throw new IllegalArgumentException("Event currency code is null.");
+        }
 
         if (balances.isEmpty()) {
             throw new IllegalStateException("Box is empty, cannot transfer funds.");

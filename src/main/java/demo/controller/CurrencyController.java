@@ -11,7 +11,7 @@ import demo.service.CurrencyService;
 
 @RestController
 @RequestMapping("/api/currency")
-public class CurrencyController {
+public class CurrencyController {//for debug perpose only
     @Autowired
     private final CurrencyService currencyService;
     

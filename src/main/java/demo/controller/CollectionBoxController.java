@@ -44,9 +44,9 @@ public class CollectionBoxController {
         boxService.assignBoxToEvent(boxId, eventId);
     }
 
-    @PutMapping("/{boxId}/unassign")
-    public void unassignBox(@PathVariable Long boxId, String reason) {
-        logger.log(System.Logger.Level.INFO, "Endpoint /api/boxes/{boxId}/unassign triggered");
+    @PutMapping("/{boxId}/unassign/{reason}")
+    public void unassignBox(@PathVariable Long boxId, @PathVariable String reason) {
+        logger.log(System.Logger.Level.INFO, "Endpoint /api/boxes/{boxId}/unassign/{reason} triggered");
         boxService.unassignBoxFromEvent(boxId, reason);
     }
 
