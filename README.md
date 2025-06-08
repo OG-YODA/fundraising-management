@@ -28,13 +28,14 @@ Getting Started
 1. Clone the repository:
 
    git clone https://github.com/your-username/charity-collection-box-api.git
+
    cd charity-collection-box-api
 
-2. Build the project:
+3. Build the project:
 
    mvn clean install
 
-3. Run the application:
+4. Run the application:
 
    mvn spring-boot:run
 
