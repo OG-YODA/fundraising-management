@@ -12,6 +12,8 @@ import demo.dto.FinancialReportDto;
 import demo.entity.Currency;
 import demo.entity.FundraisingEvent;
 import demo.enums.CurrencyCode;
+import demo.exception.BadRequestException;
+import demo.exception.ResourceNotFoundException;
 import demo.repository.CurrencyRepository;
 import demo.repository.FundraisingEventRepository;
 
@@ -29,19 +31,28 @@ public class FundraisingEventService {
 
     public FundraisingEvent createEvent(String name, CurrencyCode currencyCode) {
         logger.log(System.Logger.Level.INFO, "Creating event with name: " + name + " and currency code: " + currencyCode);
+
+        if (name == null || name.trim().isEmpty()) {
+            throw new BadRequestException("Event name cannot be empty");
+        }
+
+        if (eventRepository.existsByName(name)) {
+            throw new BadRequestException("Event with the same name already exists: " + name);
+        }
+
         Optional<Currency> currencyOpt = currencyRepository.findByCode(currencyCode);
         if (currencyOpt.isEmpty()) {
-            throw new IllegalArgumentException("Unsupported currency code: " + currencyCode);
+            throw new ResourceNotFoundException("Unsupported currency code: " + currencyCode);
         }
 
         FundraisingEvent event = new FundraisingEvent();
-        event.setName(name);
+        event.setName(name.trim());
         event.setCurrency(currencyOpt.get());
         event.setTotalAmount(BigDecimal.ZERO);
 
         FundraisingEvent savedEvent = eventRepository.save(event);
-        logger.log(System.Logger.Level.INFO, "Event created with ID: " + savedEvent.getId() + ", Name: " + name + ", Currency: " + currencyCode);
-        
+        logger.log(System.Logger.Level.INFO, "Event created with ID: " + savedEvent.getId());
+
         return savedEvent;
     }
 
@@ -51,7 +62,8 @@ public class FundraisingEventService {
 
     public FundraisingEvent findById(Long id) {
         logger.log(System.Logger.Level.INFO, "Finding event with ID: " + id);
-        return eventRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Event not found with ID: " + id));
+        return eventRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Event not found with ID: " + id));
     }
 
     public List<FinancialReportDto> getFinancialReport() {
