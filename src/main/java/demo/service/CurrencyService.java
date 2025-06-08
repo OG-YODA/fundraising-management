@@ -1,6 +1,7 @@
 package demo.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -13,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 
 import demo.entity.Currency;
 import demo.enums.CurrencyCode;
+import demo.exception.ResourceNotFoundException;
 import demo.repository.CurrencyRepository;
 
 @Service
@@ -31,15 +33,18 @@ public class CurrencyService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public BigDecimal convert(BigDecimal amount, CurrencyCode fromCurrencyCode, CurrencyCode toCurrencyCode) {
+        Currency fromCurrency = currencyRepository.findByCode(fromCurrencyCode)
+            .orElseThrow(() -> new ResourceNotFoundException("Currency not found: " + fromCurrencyCode));
+        Currency toCurrency = currencyRepository.findByCode(toCurrencyCode)
+            .orElseThrow(() -> new ResourceNotFoundException("Currency not found: " + toCurrencyCode));
 
-        Currency fromCurrency = currencyRepository.findByCode(fromCurrencyCode).orElseThrow();
-        Currency toCurrency = currencyRepository.findByCode(toCurrencyCode).orElseThrow();
-        BigDecimal rate = toCurrency.getExchangeRate().divide(
-            fromCurrency.getExchangeRate(), 10, BigDecimal.ROUND_HALF_UP);
+        BigDecimal rate = toCurrency.getExchangeRate()
+            .divide(fromCurrency.getExchangeRate(), 10, RoundingMode.HALF_UP);
 
         logger.log(System.Logger.Level.INFO, "Converting " + amount + " from " + fromCurrencyCode + " to " + toCurrencyCode);
         logger.log(System.Logger.Level.INFO, "Exchange rate: " + rate);
-        return amount.multiply(rate).setScale(2, BigDecimal.ROUND_HALF_UP);
+
+        return amount.multiply(rate).setScale(2, RoundingMode.HALF_UP);
     }
 
     private String findCodesExceptProvided(CurrencyCode currencyCode){
